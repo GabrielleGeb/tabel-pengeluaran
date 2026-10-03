@@ -1,11 +1,19 @@
 import { useState, useEffect, useMemo } from "react";
 import "./TabelPengeluaran.css";
+import {
+  ambilRows,
+  ambilKategori,
+  tambahRow,
+  ubahRow,
+  hapusRow,
+  tambahKategori,
+  hapusKategori,
+  langgananData,
+  keluar,
+} from "./db";
 
-const KATEGORI_AWAL = ["MPP", "BAGA", "PANAMAS", "YAMAKER", "SENARU", "KENDARI", "PARAS", "ATAP KUNYIT"];
 const HUE = [210, 30, 150, 280, 185, 345, 55, 100, 240, 10, 320, 170];
 const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-const KEY = "pengeluaran-v1";
-const KEY_KAT = "pengeluaran-kategori-v1";
 const rp = (n) => "Rp " + Math.round(n).toLocaleString("id-ID");
 const today = () => new Date().toISOString().slice(0, 10);
 const fmtTgl = (t) => t.split("-").reverse().join("/");
@@ -18,27 +26,14 @@ const gaya = (c) => {
   return { background: `hsl(${h} 75% 90%)`, color: `hsl(${h} 60% 25%)` };
 };
 
-const load = () => {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]");
-  } catch {
-    return [];
-  }
-};
-
-const loadKat = () => {
-  try {
-    const d = JSON.parse(localStorage.getItem(KEY_KAT) || "null");
-    if (Array.isArray(d) && d.length) return d;
-  } catch {}
-  return KATEGORI_AWAL.map((nama, c) => ({ nama, c }));
-};
-
 export default function TabelPengeluaran() {
-  const [rows, setRows] = useState(load);
-  const [kategori, setKategori] = useState(loadKat);
+  const [rows, setRows] = useState([]);
+  const [kategori, setKategori] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [galat, setGalat] = useState("");
+  const [sibuk, setSibuk] = useState(false);
   const [katBaru, setKatBaru] = useState("");
-  const emptyForm = () => ({ tgl: today(), toko: "", nama: "", qty: 1, harga: "", kat: kategori[0].nama });
+  const emptyForm = () => ({ tgl: today(), toko: "", nama: "", qty: 1, harga: "", kat: kategori[0]?.nama ?? "" });
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [q, setQ] = useState("");
@@ -50,17 +45,27 @@ export default function TabelPengeluaran() {
   const [page, setPage] = useState(1);
   const PER_PAGE = 10;
 
-  useEffect(() => {
+  const muat = async () => {
     try {
-      localStorage.setItem(KEY, JSON.stringify(rows));
-    } catch {}
-  }, [rows]);
+      const [r, k] = await Promise.all([ambilRows(), ambilKategori()]);
+      setRows(r);
+      setKategori(k);
+      setGalat("");
+    } catch {
+      setGalat("Tidak bisa terhubung ke database. Cek internet, lalu muat ulang halaman.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    try {
-      localStorage.setItem(KEY_KAT, JSON.stringify(kategori));
-    } catch {}
-  }, [kategori]);
+    muat();
+    return langgananData(muat);
+  }, []);
+
+  useEffect(() => {
+    if (!form.kat && kategori.length) setForm((f) => ({ ...f, kat: kategori[0].nama }));
+  }, [kategori, form.kat]);
 
   useEffect(() => {
     setPage(1);
@@ -79,7 +84,7 @@ export default function TabelPengeluaran() {
   if (form.kat && !opsiForm.includes(form.kat)) opsiForm.unshift(form.kat);
   const tokoList = useMemo(() => [...new Set(rows.map((r) => r.toko).filter(Boolean))].sort(), [rows]);
 
-  const tambahKat = () => {
+  const tambahKat = async () => {
     const nama = katBaru.trim().replace(/\s+/g, " ").toUpperCase();
     if (!nama) return;
     if (kategori.some((k) => k.nama === nama)) {
@@ -90,11 +95,16 @@ export default function TabelPengeluaran() {
     let c = 0;
     while (dipakai.has(c) && c < HUE.length) c++;
     if (c >= HUE.length) c = kategori.length;
-    setKategori([...kategori, { nama, c }]);
-    setKatBaru("");
+    try {
+      await tambahKategori({ nama, c });
+      setKatBaru("");
+      await muat();
+    } catch {
+      alert("Gagal menambah kategori. Cek internet, lalu coba lagi.");
+    }
   };
 
-  const hapusKat = (nama) => {
+  const hapusKat = async (nama) => {
     if (kategori.length <= 1) {
       alert("Minimal harus ada satu kategori.");
       return;
@@ -103,7 +113,13 @@ export default function TabelPengeluaran() {
     const info = dipakai ? `\n${dipakai} transaksi lama tetap tersimpan dengan kategori ini.` : "";
     if (!confirm(`Hapus kategori ${nama}?${info}`)) return;
     const sisa = kategori.filter((k) => k.nama !== nama);
-    setKategori(sisa);
+    try {
+      await hapusKategori(nama);
+      await muat();
+    } catch {
+      alert("Gagal menghapus kategori. Cek internet, lalu coba lagi.");
+      return;
+    }
     if (form.kat === nama) setForm({ ...form, kat: sisa[0].nama });
     if (fk === nama) setFk("");
   };
@@ -111,7 +127,7 @@ export default function TabelPengeluaran() {
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const jumlah = (Number(form.qty) || 0) * (Number(form.harga) || 0);
 
-  const simpan = () => {
+  const simpan = async () => {
     const qty = Number(form.qty);
     const harga = Number(form.harga);
     if (!form.tgl || !form.nama.trim() || !(qty > 0) || form.harga === "" || harga < 0) {
@@ -119,15 +135,22 @@ export default function TabelPengeluaran() {
       return;
     }
     const data = { tgl: form.tgl, toko: form.toko.trim(), nama: form.nama.trim(), qty, harga, kat: form.kat };
-    if (editId) {
-      setRows(rows.map((r) => (r.id === editId ? { ...r, ...data } : r)));
-      setEditId(null);
-      setForm(emptyForm());
-    } else {
-      setRows([...rows, { id: Date.now(), ...data }]);
-      setForm({ ...emptyForm(), tgl: form.tgl, kat: form.kat, toko: form.toko });
-      setPage(1);
+    setSibuk(true);
+    try {
+      if (editId) {
+        await ubahRow(editId, data);
+        setEditId(null);
+        setForm(emptyForm());
+      } else {
+        await tambahRow(data);
+        setForm({ ...emptyForm(), tgl: form.tgl, kat: form.kat, toko: form.toko });
+        setPage(1);
+      }
+      await muat();
+    } catch {
+      alert("Gagal menyimpan. Cek internet, lalu coba lagi.");
     }
+    setSibuk(false);
   };
 
   const edit = (r) => {
@@ -141,10 +164,15 @@ export default function TabelPengeluaran() {
     setForm(emptyForm());
   };
 
-  const hapus = (id) => {
+  const hapus = async (id) => {
     if (!confirm("Hapus baris ini?")) return;
-    setRows(rows.filter((r) => r.id !== id));
-    if (id === editId) batal();
+    try {
+      await hapusRow(id);
+      if (id === editId) batal();
+      await muat();
+    } catch {
+      alert("Gagal menghapus. Cek internet, lalu coba lagi.");
+    }
   };
 
   const reset = () => {
@@ -224,7 +252,10 @@ export default function TabelPengeluaran() {
           ))}
         </datalist>
 
-        <h1>Laporan Pengeluaran</h1>
+        <div className="tp-head">
+            <h1>Laporan Pengeluaran</h1>
+            <button className="out" onClick={keluar}>Keluar</button>
+        </div>
 
         <div className="tp-top">
           <div className="tp-card tp-form">
@@ -262,7 +293,9 @@ export default function TabelPengeluaran() {
               </select>
             </div>
             <div className="f-btn btn-row">
-              <button onClick={simpan}>{editId ? "Simpan" : "+ Tambah"}</button>
+              <button onClick={simpan} disabled={sibuk}>
+                {editId ? "Simpan" : "+ Tambah"}
+              </button>
               {editId && (
                 <button className="sec" onClick={batal}>
                   Batal
@@ -300,12 +333,12 @@ export default function TabelPengeluaran() {
         </div>
 
         <details className="tp-card tp-kat">
-            <summary>
-                <span>
-                    Kelola Kategori
-                    <small>Tambah atau hapus kategori</small>
-                </span>
-            </summary>
+          <summary>
+            <span>
+              Kelola Kategori
+              <small>Tambah atau hapus kategori</small>
+            </span>
+          </summary>
           <div className="tp-kat-list">
             {kategori.map((k) => (
               <span className="tp-tag tp-kchip" key={k.nama} style={gaya(k.c)}>
@@ -373,7 +406,7 @@ export default function TabelPengeluaran() {
             <tbody>
               {list.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="tp-empty">Belum ada data.</td>
+                  <td colSpan={8} className="tp-empty">{loading ? "Memuat data..." : "Belum ada data."}</td>
                 </tr>
               ) : (
                 pageRows.map((r) => (

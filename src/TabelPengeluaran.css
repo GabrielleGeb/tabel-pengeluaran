@@ -142,6 +142,16 @@ body{
     font-size:13px
 }
 
+.tp-err{background:#ffe6eb;border:1px solid #d64560;color:#7a1f31;border-radius:8px;padding:10px 14px;margin-bottom:16px}
+
+.tp-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:28px}
+.tp .tp-head h1{margin:0}
+.tp button.out{width:auto;background:rgba(255,255,255,.14);color:#fff;padding:8px 18px;font-weight:500}
+.tp button.out:hover{background:rgba(255,255,255,.24)}
+.tp .tp-login{max-width:440px}
+.tp-login form{display:grid;gap:14px}
+.tp-err{background:#ffe6eb;border:1px solid #d64560;color:#7a1f31;border-radius:8px;padding:10px 14px;margin-bottom:16px}
+
 @media (max-width:1000px){
     .tp-top{grid-template-columns:1fr}
 }
