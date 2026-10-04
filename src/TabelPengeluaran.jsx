@@ -11,6 +11,7 @@ import {
   langgananData,
   keluar,
 } from "./db";
+import { unduhExcel } from "./exportExcel";
 
 const HUE = [210, 30, 150, 280, 185, 345, 55, 100, 240, 10, 320, 170];
 const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -42,6 +43,7 @@ export default function TabelPengeluaran() {
   const [d2, setD2] = useState("");
   const [sumMode, setSumMode] = useState("kat");
   const [exportBln, setExportBln] = useState("");
+  const [exportKat, setExportKat] = useState("");
   const [page, setPage] = useState(1);
   const PER_PAGE = 10;
 
@@ -218,29 +220,21 @@ export default function TabelPengeluaran() {
   const bulanList = useMemo(() => [...new Set(rows.map((r) => r.tgl.slice(0, 7)))].sort().reverse(), [rows]);
   const bln = bulanList.includes(exportBln) ? exportBln : "";
 
-  const exportCsv = () => {
-    const data = rows.filter((r) => !bln || r.tgl.startsWith(bln));
+  const ek = semuaKat.includes(exportKat) ? exportKat : "";
+
+  const exportExcel = async () => {
+    const data = rows.filter((r) => (!bln || r.tgl.startsWith(bln)) && (!ek || r.kat === ek));
     if (!data.length) {
       alert("Tidak ada data untuk diexport.");
       return;
     }
-    const txt = (v) => `"${String(v).replace(/"/g, '""')}"`;
-    const num = (n) => String(n).replace(".", ",");
-    const head = ["Tanggal", "Nama Barang", "Nama Toko", "Qty", "Harga", "Jumlah", "Keterangan"].join(";");
-    const body = [...data]
-      .sort((a, b) => a.tgl.localeCompare(b.tgl) || a.id - b.id)
-      .map((r) =>
-        [r.tgl, txt(r.nama), txt(r.toko || ""), num(r.qty), num(r.harga), num(r.qty * r.harga), txt(r.kat)].join(";")
-      );
-    const jml = data.reduce((t, r) => t + r.qty * r.harga, 0);
-    const foot = ["", txt("TOTAL"), "", "", "", num(jml), ""].join(";");
-    const csv = "\uFEFF" + [head, ...body, foot].join("\r\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = bln ? `pengeluaran-${bln}.csv` : `pengeluaran-semua-${today()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const slug = ek.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const dasar = bln ? `pengeluaran-${bln}` : `pengeluaran-semua-${today()}`;
+    try {
+      await unduhExcel(data, { kat: ek, urutKat: semuaKat }, `${dasar}${slug ? "-" + slug : ""}.xlsx`);
+    } catch {
+      alert("Gagal membuat file Excel. Coba lagi.");
+    }
   };
 
   return (
@@ -447,7 +441,7 @@ export default function TabelPengeluaran() {
         <div className="tp-card tp-export">
           <div>
             <b>Unduh Laporan</b>
-            <small>Simpan data pengeluaran sebagai file Excel, per bulan atau semua.</small>
+            <small>Simpan data pengeluaran sebagai file Excel, per bulan, per kategori, atau semua.</small>
           </div>
           <div className="tp-exp">
             <select value={bln} onChange={(e) => setExportBln(e.target.value)} aria-label="Pilih bulan untuk export">
@@ -456,7 +450,13 @@ export default function TabelPengeluaran() {
                 <option key={k} value={k}>{labelBulan(k)}</option>
               ))}
             </select>
-            <button className="exp" onClick={exportCsv}>Unduh Excel</button>
+            <select value={ek} onChange={(e) => setExportKat(e.target.value)} aria-label="Pilih kategori untuk export">
+              <option value="">Semua kategori</option>
+              {semuaKat.map((k) => (
+                <option key={k} value={k}>{k}</option>
+              ))}
+            </select>
+            <button className="exp" onClick={exportExcel}>Unduh Excel</button>
           </div>
         </div>
       </div>

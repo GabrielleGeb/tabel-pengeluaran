@@ -110,6 +110,7 @@ body{
 
 .tp-exp{
     display:flex;
+    flex-wrap:wrap;
     gap:8px;
     align-items:center
 }
@@ -163,7 +164,7 @@ body{
     .tp-card{padding:12px}
     .tp-top{gap:10px;margin-bottom:10px}
     .tp-exp{width:100%}
-    .tp-exp select{flex:1;min-width:0}
+    .tp-exp select{flex:1 1 140px;min-width:0}
     .tp-form,.tp-filter{gap:10px}
     .tp-form{grid-template-columns:1fr 1fr}
     .tp .tp-form>div{grid-column:span 1}
