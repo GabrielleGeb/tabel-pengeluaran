@@ -1,0 +1,16 @@
+name: Keep Supabase active
+
+on:
+  schedule:
+    - cron: "0 3 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping database
+        run: |
+          curl -fsS --retry 3 --max-time 30 \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/kategori?select=nama&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_KEY }}"
