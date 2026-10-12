@@ -22,6 +22,7 @@ export const ambilRows = async () => {
         qty: Number(r.qty),
         harga: Number(r.harga),
         kat: r.kat,
+        lunas: Boolean(r.lunas),
     }));
 };
 

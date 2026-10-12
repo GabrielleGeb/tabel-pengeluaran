@@ -108,18 +108,10 @@ body{
 .tp-total{display:flex;justify-content:space-between;gap:8px;font-weight:600;background:#10243e;color:#fff;border-color:#10243e}
 .tp-total span:last-child{color:#f5b301}
 
-.tp-exp{
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-    align-items:center
-}
-
-.tp-exp select{
-    width:auto;
-    min-width:170px;
-    background:#fff
-}
+.tp-exp{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.tp-exp>div{min-width:150px}
+.tp-exp select,.tp-exp input{width:100%;background:#fff}
+.tp-exp button.exp{height:44px}
 
 .tp button.exp{
     width:auto;
@@ -153,6 +145,13 @@ body{
 .tp-login form{display:grid;gap:14px}
 .tp-err{background:#ffe6eb;border:1px solid #d64560;color:#7a1f31;border-radius:8px;padding:10px 14px;margin-bottom:16px}
 
+
+.tp button.lunas{width:auto;padding:4px 14px;border-radius:99px;font-size:13px;font-weight:500;background:#ffe6eb;color:#a3203f}
+.tp button.lunas:hover{background:#ffd3dc}
+.tp button.lunas.on{background:#d9f3e6;color:#17663f}
+.tp button.lunas.on:hover{background:#c7ecd8}
+.tp-total{flex-wrap:wrap}
+
 @media (max-width:1000px){
     .tp-top{grid-template-columns:1fr}
 }
@@ -163,8 +162,9 @@ body{
     .tp h1{font-size:22px;margin-bottom:20px}
     .tp-card{padding:12px}
     .tp-top{gap:10px;margin-bottom:10px}
-    .tp-exp{width:100%}
-    .tp-exp select{flex:1 1 140px;min-width:0}
+    .tp-exp{width:100%;display:grid;grid-template-columns:1fr 1fr}
+    .tp-exp>div{min-width:0}
+    .tp-exp button.exp{grid-column:span 2;width:100%}
     .tp-form,.tp-filter{gap:10px}
     .tp-form{grid-template-columns:1fr 1fr}
     .tp .tp-form>div{grid-column:span 1}

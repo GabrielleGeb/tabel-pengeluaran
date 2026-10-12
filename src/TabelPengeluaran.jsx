@@ -44,6 +44,9 @@ export default function TabelPengeluaran() {
   const [sumMode, setSumMode] = useState("kat");
   const [exportBln, setExportBln] = useState("");
   const [exportKat, setExportKat] = useState("");
+  const [exportDari, setExportDari] = useState("");
+  const [exportSampai, setExportSampai] = useState("");
+  const [fl, setFl] = useState("");
   const [page, setPage] = useState(1);
   const PER_PAGE = 10;
 
@@ -71,7 +74,7 @@ export default function TabelPengeluaran() {
 
   useEffect(() => {
     setPage(1);
-  }, [q, fk, d1, d2]);
+  }, [q, fk, fl, d1, d2]);
 
   const gayaKat = (nama) => {
     const k = kategori.find((x) => x.nama === nama);
@@ -177,9 +180,20 @@ export default function TabelPengeluaran() {
     }
   };
 
+  const ubahLunas = async (r) => {
+    setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, lunas: !r.lunas } : x)));
+    try {
+      await ubahRow(r.id, { lunas: !r.lunas });
+    } catch {
+      alert("Gagal mengubah status. Cek internet, lalu coba lagi.");
+      await muat();
+    }
+  };
+
   const reset = () => {
     setQ("");
     setFk("");
+    setFl("");
     setD1("");
     setD2("");
   };
@@ -191,13 +205,15 @@ export default function TabelPengeluaran() {
         (r) =>
           (!qq || r.nama.toLowerCase().includes(qq) || (r.toko || "").toLowerCase().includes(qq)) &&
           (!fk || r.kat === fk) &&
+          (!fl || (fl === "lunas" ? r.lunas : !r.lunas)) &&
           (!d1 || r.tgl >= d1) &&
           (!d2 || r.tgl <= d2)
       )
       .sort((a, b) => b.tgl.localeCompare(a.tgl) || b.id - a.id);
-  }, [rows, q, fk, d1, d2]);
+  }, [rows, q, fk, fl, d1, d2]);
 
   const total = list.reduce((s, r) => s + r.qty * r.harga, 0);
+  const belumLunas = list.reduce((s, r) => (r.lunas ? s : s + r.qty * r.harga), 0);
 
   const totalPages = Math.max(1, Math.ceil(list.length / PER_PAGE));
   const cur = Math.min(page, totalPages);
@@ -223,13 +239,28 @@ export default function TabelPengeluaran() {
   const ek = semuaKat.includes(exportKat) ? exportKat : "";
 
   const exportExcel = async () => {
-    const data = rows.filter((r) => (!bln || r.tgl.startsWith(bln)) && (!ek || r.kat === ek));
+    if (exportDari && exportSampai && exportDari > exportSampai) {
+      alert("Tanggal awal tidak boleh lebih besar dari tanggal akhir.");
+      return;
+    }
+    const data = rows.filter(
+      (r) =>
+        (!bln || r.tgl.startsWith(bln)) &&
+        (!exportDari || r.tgl >= exportDari) &&
+        (!exportSampai || r.tgl <= exportSampai) &&
+        (!ek || r.kat === ek)
+    );
     if (!data.length) {
       alert("Tidak ada data untuk diexport.");
       return;
     }
     const slug = ek.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    const dasar = bln ? `pengeluaran-${bln}` : `pengeluaran-semua-${today()}`;
+    let dasar = `pengeluaran-semua-${today()}`;
+    if (bln) dasar = `pengeluaran-${bln}`;
+    else if (exportDari && exportSampai)
+      dasar = exportDari === exportSampai ? `pengeluaran-${exportDari}` : `pengeluaran-${exportDari}-sd-${exportSampai}`;
+    else if (exportDari) dasar = `pengeluaran-sejak-${exportDari}`;
+    else if (exportSampai) dasar = `pengeluaran-sampai-${exportSampai}`;
     try {
       await unduhExcel(data, { kat: ek, urutKat: semuaKat }, `${dasar}${slug ? "-" + slug : ""}.xlsx`);
     } catch {
@@ -310,6 +341,14 @@ export default function TabelPengeluaran() {
                 {semuaKat.map((k) => (
                   <option key={k}>{k}</option>
                 ))}
+              </select>
+            </div>
+            <div className="f-fkat">
+              <label>Status</label>
+              <select value={fl} onChange={(e) => setFl(e.target.value)}>
+                <option value="">Semua</option>
+                <option value="belum">Belum lunas</option>
+                <option value="lunas">Lunas</option>
               </select>
             </div>
             <div>
@@ -394,13 +433,14 @@ export default function TabelPengeluaran() {
                 <th className="n">Harga</th>
                 <th className="n">Jumlah</th>
                 <th>Keterangan</th>
+                <th>Status</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {list.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="tp-empty">{loading ? "Memuat data..." : "Belum ada data."}</td>
+                  <td colSpan={9} className="tp-empty">{loading ? "Memuat data..." : "Belum ada data."}</td>
                 </tr>
               ) : (
                 pageRows.map((r) => (
@@ -412,6 +452,11 @@ export default function TabelPengeluaran() {
                     <td data-label="Harga" className="n">{rp(r.harga)}</td>
                     <td data-label="Jumlah" className="n">{rp(r.qty * r.harga)}</td>
                     <td data-label="Keterangan"><span className="tp-tag" style={gayaKat(r.kat)}>{r.kat}</span></td>
+                    <td data-label="Status">
+                      <button className={"lunas" + (r.lunas ? " on" : "")} onClick={() => ubahLunas(r)}>
+                        {r.lunas ? "Lunas" : "Belum"}
+                      </button>
+                    </td>
                     <td className="tp-act">
                       <button className="edit" onClick={() => edit(r)}>Edit</button>
                       <button className="del" onClick={() => hapus(r.id)}>Hapus</button>
@@ -435,27 +480,76 @@ export default function TabelPengeluaran() {
 
         <div className="tp-card tp-total">
           <span>{list.length} transaksi</span>
+          <span>Belum lunas: {rp(belumLunas)}</span>
           <span>Total: {rp(total)}</span>
         </div>
 
         <div className="tp-card tp-export">
           <div>
             <b>Unduh Laporan</b>
-            <small>Simpan data pengeluaran sebagai file Excel, per bulan, per kategori, atau semua.</small>
+            <small>
+              Simpan data pengeluaran sebagai file Excel. Pilih per bulan atau per tanggal, dan bisa dibatasi per
+              kategori. Untuk satu hari saja, cukup pilih satu tanggal.
+            </small>
           </div>
           <div className="tp-exp">
-            <select value={bln} onChange={(e) => setExportBln(e.target.value)} aria-label="Pilih bulan untuk export">
-              <option value="">Semua bulan</option>
-              {bulanList.map((k) => (
-                <option key={k} value={k}>{labelBulan(k)}</option>
-              ))}
-            </select>
-            <select value={ek} onChange={(e) => setExportKat(e.target.value)} aria-label="Pilih kategori untuk export">
-              <option value="">Semua kategori</option>
-              {semuaKat.map((k) => (
-                <option key={k} value={k}>{k}</option>
-              ))}
-            </select>
+            <div>
+              <label>Bulan</label>
+              <select
+                value={bln}
+                onChange={(e) => {
+                  setExportBln(e.target.value);
+                  if (e.target.value) {
+                    setExportDari("");
+                    setExportSampai("");
+                  }
+                }}
+              >
+                <option value="">Semua bulan</option>
+                {bulanList.map((k) => (
+                  <option key={k} value={k}>{labelBulan(k)}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label>Dari tanggal</label>
+              <input
+                type="date"
+                value={exportDari}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExportDari(v);
+                  if (v) {
+                    setExportBln("");
+                    if (!exportSampai || v > exportSampai) setExportSampai(v);
+                  }
+                }}
+              />
+            </div>
+            <div>
+              <label>Sampai tanggal</label>
+              <input
+                type="date"
+                value={exportSampai}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setExportSampai(v);
+                  if (v) {
+                    setExportBln("");
+                    if (exportDari && v < exportDari) setExportDari(v);
+                  }
+                }}
+              />
+            </div>
+            <div>
+              <label>Kategori</label>
+              <select value={ek} onChange={(e) => setExportKat(e.target.value)}>
+                <option value="">Semua kategori</option>
+                {semuaKat.map((k) => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
+            </div>
             <button className="exp" onClick={exportExcel}>Unduh Excel</button>
           </div>
         </div>

@@ -3,8 +3,8 @@
 const FORMAT_RIBUAN = "#,##0";
 const FORMAT_TGL = "dd/mm/yyyy";
 
-const LEBAR_KOLOM = [{ width: 12 }, { width: 32 }, { width: 22 }, { width: 8 }, { width: 14 }, { width: 16 }, { width: 20 }];
-const HEADER = ["Tanggal", "Nama Barang", "Nama Toko", "Qty", "Harga", "Jumlah", "Keterangan"];
+const LEBAR_KOLOM = [{ width: 12 }, { width: 32 }, { width: 22 }, { width: 8 }, { width: 14 }, { width: 16 }, { width: 20 }, { width: 14 }];
+const HEADER = ["Tanggal", "Nama Barang", "Nama Toko", "Qty", "Harga", "Jumlah", "Keterangan", "Status"];
 
 // "2026-10-03" -> Date UTC tengah malam, supaya jadi tanggal utuh di Excel (tanpa geser zona waktu)
 const keTanggal = (t) => {
@@ -24,6 +24,7 @@ const dataSheet = (data) => {
     { value: r.harga, type: Number, format: FORMAT_RIBUAN },
     { value: r.qty * r.harga, type: Number, format: FORMAT_RIBUAN },
     r.kat,
+    r.lunas ? "Lunas" : "Belum lunas",
   ]);
   const jumlah = data.reduce((t, r) => t + r.qty * r.harga, 0);
   const total = [
@@ -33,6 +34,7 @@ const dataSheet = (data) => {
     null,
     null,
     { value: jumlah, type: Number, format: FORMAT_RIBUAN, fontWeight: "bold" },
+    null,
     null,
   ];
   return [header, ...isi, total];
