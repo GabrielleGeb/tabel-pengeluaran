@@ -46,7 +46,8 @@ body{
 .tp-form .f-qty{grid-column:span 1}
 .tp-form .f-harga{grid-column:span 2}
 .tp-form .f-jml{grid-column:span 3}
-.tp-form .f-kat{grid-column:span 4}
+.tp-form .f-kat{grid-column:span 2}
+.tp-form .f-status{grid-column:span 2}
 .tp-form .f-btn{grid-column:span 2}
 .tp .btn-row{display:flex;gap:8px}
 .tp .btn-row button{flex:1}
@@ -146,10 +147,6 @@ body{
 .tp-err{background:#ffe6eb;border:1px solid #d64560;color:#7a1f31;border-radius:8px;padding:10px 14px;margin-bottom:16px}
 
 
-.tp button.lunas{width:auto;padding:4px 14px;border-radius:99px;font-size:13px;font-weight:500;background:#ffe6eb;color:#a3203f}
-.tp button.lunas:hover{background:#ffd3dc}
-.tp button.lunas.on{background:#d9f3e6;color:#17663f}
-.tp button.lunas.on:hover{background:#c7ecd8}
 .tp-total{flex-wrap:wrap}
 
 @media (max-width:1000px){
@@ -168,7 +165,7 @@ body{
     .tp-form,.tp-filter{gap:10px}
     .tp-form{grid-template-columns:1fr 1fr}
     .tp .tp-form>div{grid-column:span 1}
-    .tp .tp-form>.f-tgl,.tp .tp-form>.f-toko,.tp .tp-form>.f-nama,.tp .tp-form>.f-jml,.tp .tp-form>.f-kat,.tp .tp-form>.f-btn{grid-column:span 2}
+    .tp .tp-form>.f-tgl,.tp .tp-form>.f-toko,.tp .tp-form>.f-nama,.tp .tp-form>.f-jml,.tp .tp-form>.f-kat,.tp .tp-form>.f-status,.tp .tp-form>.f-btn{grid-column:span 2}
     .tp .tp-form>.f-edit{grid-column:1/-1}
     .tp tbody tr.editing{background:#fff6d6}
     .tp td.tp-act{white-space:normal}
