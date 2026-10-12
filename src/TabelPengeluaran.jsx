@@ -34,7 +34,7 @@ export default function TabelPengeluaran() {
   const [galat, setGalat] = useState("");
   const [sibuk, setSibuk] = useState(false);
   const [katBaru, setKatBaru] = useState("");
-  const emptyForm = () => ({ tgl: today(), toko: "", nama: "", qty: 1, harga: "", kat: kategori[0]?.nama ?? "" });
+  const emptyForm = () => ({ tgl: today(), toko: "", nama: "", qty: 1, harga: "", kat: kategori[0]?.nama ?? "", status: "" });
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [q, setQ] = useState("");
@@ -46,7 +46,6 @@ export default function TabelPengeluaran() {
   const [exportKat, setExportKat] = useState("");
   const [exportDari, setExportDari] = useState("");
   const [exportSampai, setExportSampai] = useState("");
-  const [fl, setFl] = useState("");
   const [page, setPage] = useState(1);
   const PER_PAGE = 10;
 
@@ -74,7 +73,7 @@ export default function TabelPengeluaran() {
 
   useEffect(() => {
     setPage(1);
-  }, [q, fk, fl, d1, d2]);
+  }, [q, fk, d1, d2]);
 
   const gayaKat = (nama) => {
     const k = kategori.find((x) => x.nama === nama);
@@ -139,7 +138,7 @@ export default function TabelPengeluaran() {
       alert("Lengkapi tanggal, nama barang, qty, dan harga.");
       return;
     }
-    const data = { tgl: form.tgl, toko: form.toko.trim(), nama: form.nama.trim(), qty, harga, kat: form.kat };
+    const data = { tgl: form.tgl, toko: form.toko.trim(), nama: form.nama.trim(), qty, harga, kat: form.kat, status: form.status.trim() };
     setSibuk(true);
     try {
       if (editId) {
@@ -160,7 +159,7 @@ export default function TabelPengeluaran() {
 
   const edit = (r) => {
     setEditId(r.id);
-    setForm({ tgl: r.tgl, toko: r.toko || "", nama: r.nama, qty: r.qty, harga: r.harga, kat: r.kat });
+    setForm({ tgl: r.tgl, toko: r.toko || "", nama: r.nama, qty: r.qty, harga: r.harga, kat: r.kat, status: r.status || "" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -180,20 +179,9 @@ export default function TabelPengeluaran() {
     }
   };
 
-  const ubahLunas = async (r) => {
-    setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, lunas: !r.lunas } : x)));
-    try {
-      await ubahRow(r.id, { lunas: !r.lunas });
-    } catch {
-      alert("Gagal mengubah status. Cek internet, lalu coba lagi.");
-      await muat();
-    }
-  };
-
   const reset = () => {
     setQ("");
     setFk("");
-    setFl("");
     setD1("");
     setD2("");
   };
@@ -203,17 +191,15 @@ export default function TabelPengeluaran() {
     return rows
       .filter(
         (r) =>
-          (!qq || r.nama.toLowerCase().includes(qq) || (r.toko || "").toLowerCase().includes(qq)) &&
+          (!qq || r.nama.toLowerCase().includes(qq) || (r.toko || "").toLowerCase().includes(qq) || (r.status || "").toLowerCase().includes(qq)) &&
           (!fk || r.kat === fk) &&
-          (!fl || (fl === "lunas" ? r.lunas : !r.lunas)) &&
           (!d1 || r.tgl >= d1) &&
           (!d2 || r.tgl <= d2)
       )
       .sort((a, b) => b.tgl.localeCompare(a.tgl) || b.id - a.id);
-  }, [rows, q, fk, fl, d1, d2]);
+  }, [rows, q, fk, d1, d2]);
 
   const total = list.reduce((s, r) => s + r.qty * r.harga, 0);
-  const belumLunas = list.reduce((s, r) => (r.lunas ? s : s + r.qty * r.harga), 0);
 
   const totalPages = Math.max(1, Math.ceil(list.length / PER_PAGE));
   const cur = Math.min(page, totalPages);
@@ -271,6 +257,10 @@ export default function TabelPengeluaran() {
   return (
     <div className="tp">
       <div className="tp-in">
+        <datalist id="daftar-status">
+          <option value="Lunas" />
+          <option value="Belum" />
+        </datalist>
         <datalist id="daftar-toko">
           {tokoList.map((t) => (
             <option key={t} value={t} />
@@ -317,6 +307,10 @@ export default function TabelPengeluaran() {
                 ))}
               </select>
             </div>
+            <div className="f-status">
+              <label>Status</label>
+              <input list="daftar-status" value={form.status} onChange={set("status")} placeholder="Lunas / Belum" />
+            </div>
             <div className="f-btn btn-row">
               <button onClick={simpan} disabled={sibuk}>
                 {editId ? "Simpan" : "+ Tambah"}
@@ -332,7 +326,7 @@ export default function TabelPengeluaran() {
           <div className="tp-card tp-filter">
             <div className="f-cari">
               <label>Cari</label>
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama barang / toko..." />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari barang / toko / status..." />
             </div>
             <div className="f-fkat">
               <label>Kategori</label>
@@ -341,14 +335,6 @@ export default function TabelPengeluaran() {
                 {semuaKat.map((k) => (
                   <option key={k}>{k}</option>
                 ))}
-              </select>
-            </div>
-            <div className="f-fkat">
-              <label>Status</label>
-              <select value={fl} onChange={(e) => setFl(e.target.value)}>
-                <option value="">Semua</option>
-                <option value="belum">Belum lunas</option>
-                <option value="lunas">Lunas</option>
               </select>
             </div>
             <div>
@@ -452,11 +438,7 @@ export default function TabelPengeluaran() {
                     <td data-label="Harga" className="n">{rp(r.harga)}</td>
                     <td data-label="Jumlah" className="n">{rp(r.qty * r.harga)}</td>
                     <td data-label="Keterangan"><span className="tp-tag" style={gayaKat(r.kat)}>{r.kat}</span></td>
-                    <td data-label="Status">
-                      <button className={"lunas" + (r.lunas ? " on" : "")} onClick={() => ubahLunas(r)}>
-                        {r.lunas ? "Lunas" : "Belum"}
-                      </button>
-                    </td>
+                    <td data-label="Status">{r.status || "-"}</td>
                     <td className="tp-act">
                       <button className="edit" onClick={() => edit(r)}>Edit</button>
                       <button className="del" onClick={() => hapus(r.id)}>Hapus</button>
@@ -480,7 +462,6 @@ export default function TabelPengeluaran() {
 
         <div className="tp-card tp-total">
           <span>{list.length} transaksi</span>
-          <span>Belum lunas: {rp(belumLunas)}</span>
           <span>Total: {rp(total)}</span>
         </div>
 

@@ -24,7 +24,7 @@ const dataSheet = (data) => {
     { value: r.harga, type: Number, format: FORMAT_RIBUAN },
     { value: r.qty * r.harga, type: Number, format: FORMAT_RIBUAN },
     r.kat,
-    r.lunas ? "Lunas" : "Belum lunas",
+    r.status || null,
   ]);
   const jumlah = data.reduce((t, r) => t + r.qty * r.harga, 0);
   const total = [
