@@ -461,7 +461,9 @@ export default function TabelPengeluaran() {
         </div>
 
         <div className="tp-card tp-total">
-          <span>{list.length} transaksi</span>
+          <span>
+            {list.length} transaksi · Qty {list.reduce((a, r) => a + (Number(r.qty) || 0), 0).toLocaleString("id-ID")}
+          </span>
           <span>Total: {rp(total)}</span>
         </div>
 
